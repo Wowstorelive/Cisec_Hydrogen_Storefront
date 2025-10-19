@@ -7,6 +7,7 @@ import {Await, Form, useLoaderData} from '@remix-run/react';
 import {Pagination, Analytics, getSeoMeta} from '@shopify/hydrogen';
 import {seoPayload} from '~/lib/seo.server';
 import {COMMON_PRODUCT_CARD_FRAGMENT} from '~/data/commonFragments';
+import {trackUserEvent} from '~/services/vertexai/trackEvent.server'; // Import trackUserEvent
 import ButtonPrimary from '~/components/Button/ButtonPrimary';
 import {
   type SearchSortKeys,
@@ -86,6 +87,23 @@ export async function loader({request, context, params}: LoaderFunctionArgs) {
       updatedAt: new Date().toISOString(),
     },
   });
+
+  // Track search event
+  const userId = null; // Replace with actual user ID if available
+  const visitorId = context.session.get('visitorId') || request.headers.get('X-Forwarded-For') || request.headers.get('X-Real-IP') || 'anonymous'; // Replace with actual visitor ID logic
+  await trackUserEvent(
+    'search',
+    userId,
+    visitorId,
+    products.nodes.map((product: any) => ({
+      product: {
+        id: product.id,
+        title: product.title,
+        // Add other relevant product details
+      }
+    })),
+    searchTerm
+  );
 
   return defer({
     routePromise,

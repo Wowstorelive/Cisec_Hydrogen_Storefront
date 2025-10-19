@@ -56,6 +56,7 @@ import {getLoaderRouteFromMetaobject} from '~/utils/getLoaderRouteFromMetaobject
 import type {RootLoader} from '~/root';
 import {useAside} from '~/components/Aside';
 import {SlashIcon} from '@heroicons/react/24/solid';
+import {trackUserEvent} from '~/services/vertexai/trackEvent.server';
 
 export const headers = routeHeaders;
 
@@ -69,6 +70,30 @@ export async function loader(args: LoaderFunctionArgs) {
 
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
+
+  // Track product view event
+  const product = criticalData.product;
+  if (product) {
+    const userId = null; // Replace with actual user ID if available
+    const visitorId = context.session.get('visitorId') || request.headers.get('X-Forwarded-For') || request.headers.get('X-Real-IP') || 'anonymous'; // Replace with actual visitor ID logic
+    await trackUserEvent(
+      'detail-page-view',
+      userId,
+      visitorId,
+      [{
+        product: {
+          id: product.id,
+          title: product.title,
+          categories: product.productType ? [product.productType] : [],
+          priceInfo: {
+            price: parseFloat(product.selectedOrFirstAvailableVariant?.price.amount || '0'),
+            currencyCode: product.selectedOrFirstAvailableVariant?.price.currencyCode || 'EUR'
+          },
+          images: product.media.nodes.map(img => ({ uri: img.image.url })),
+        }
+      }]
+    );
+  }
 
   return defer({...deferredData, ...criticalData});
 }

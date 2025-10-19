@@ -23,6 +23,8 @@ import {
   getShopAnalytics,
 } from '@shopify/hydrogen';
 import {Layout} from '~/components/Layout';
+import {TopBar} from '~/components/TopBar'; // Import TopBar
+import {Header} from '~/components/Header'; // Import Header
 import {seoPayload} from '~/lib/seo.server';
 import favicon from '@/assets/favicon.svg';
 import {GenericError} from './components/GenericError';
@@ -216,6 +218,50 @@ function MainLayout({children}: {children?: React.ReactNode}) {
                 key={`${locale.language}-${locale.country}`}
                 layout={data.layout}
               >
+                <TopBar
+                  settings={{
+                    section_width: 'stretch_width', // Default from Liquid schema
+                    color_scheme: 'default-color-scheme', // Default from Liquid schema
+                    show_mobile: true, // Default from Liquid schema
+                    show_separator_line: false, // Default from Liquid schema
+                    uppercase: false, // Default from Liquid schema
+                    font_size: 12, // Default from Liquid schema
+                    font_weight: 'body_weight', // Default from Liquid schema
+                    padding_top: 10, // Default from Liquid schema
+                    padding_bottom: 10, // Default from Liquid schema
+                  }}
+                  blocks={[]} // Blocks will be passed from loader
+                  storeEmail={data.storeEmail}
+                  storePhone={data.storePhone}
+                  socialLinks={data.layout.headerMenu.socials} // Assuming socials are part of headerMenu
+                  storePage={data.storePage}
+                  storeAddress={data.storeAddress}
+                />
+                <Header
+                  settings={{
+                    section_width: 'stretch_width', // Default from Liquid schema
+                    color_scheme: 'default-color-scheme', // Default from Liquid schema
+                    show_email: true, // Placeholder
+                    show_phone: true, // Placeholder
+                    enable_login_popup: true, // Placeholder
+                    separator_line: 'unset', // Default from Liquid schema
+                    sticky_header_type: 'on-scroll-up', // Default from Liquid schema
+                    sticky_header_mobile: true, // Default from Liquid schema
+                    show_search: true, // Placeholder
+                    show_account_icon: true, // Placeholder
+                    show_wishlist_icon: true, // Placeholder
+                    show_shopping_cart: true, // Placeholder
+                    show_currency: true, // Placeholder
+                    show_language: true, // Placeholder
+                    show_recently_viewed: true, // Placeholder
+                    padding_top: 25, // Default from Liquid schema
+                    padding_bottom: 25, // Default from Liquid schema
+                  }}
+                  pageType={null} // Placeholder
+                  enableCatalogMode={false} // Placeholder
+                  storeEmail={data.storeEmail}
+                  storePhone={data.storePhone}
+                />
                 {children}
               </Layout>
             </Analytics.Provider>
@@ -418,5 +464,17 @@ async function getLayoutData({storefront, env}: AppLoadContext) {
 
   invariant(data, 'No data returned from Shopify API');
 
-  return data;
+  // Assuming these are available in env or can be fetched
+  const storeEmail = env.PUBLIC_STORE_EMAIL; // Placeholder
+  const storePhone = env.PUBLIC_STORE_PHONE; // Placeholder
+  const storePage = null; // Placeholder: needs to be fetched if it's a Shopify Page
+  const storeAddress = env.PUBLIC_STORE_ADDRESS; // Placeholder
+
+  return {
+    ...data,
+    storeEmail,
+    storePhone,
+    storePage,
+    storeAddress,
+  };
 }

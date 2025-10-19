@@ -1,4 +1,5 @@
-import {useLoaderData} from '@remix-run/react';
+import {useLoaderData, useFetcher} from '@remix-run/react';
+import {useEffect, useState} from 'react';
 import invariant from 'tiny-invariant';
 import {
   type LoaderFunctionArgs,
@@ -30,6 +31,7 @@ import ButtonPrimary from '~/components/Button/ButtonPrimary';
 import clsx from 'clsx';
 import PageHeader from '~/components/PageHeader';
 import {useVariantUrl} from '~/lib/variants';
+import {ProductBundle} from '~/components/ProductBundle'; // Import ProductBundle
 
 export async function action({request, context}: ActionFunctionArgs) {
   const {cart} = context;
@@ -44,7 +46,22 @@ export async function action({request, context}: ActionFunctionArgs) {
 
   switch (action) {
     case CartForm.ACTIONS.LinesAdd:
-      result = await cart.addLines(inputs.lines);
+      // Handle adding multiple lines for a bundle
+      const bundleLines = JSON.parse(inputs.lines as string); // Assuming lines will be stringified JSON
+      result = await cart.addLines(bundleLines);
+
+      // Track add-to-cart event
+      await trackUserEvent(
+        'add-to-cart',
+        userId,
+        visitorId,
+        bundleLines.map((line: any) => ({
+          product: {
+            id: line.merchandiseId,
+            quantity: line.quantity,
+          }
+        }))
+      );
       break;
     case CartForm.ACTIONS.LinesUpdate:
       result = await cart.updateLines(inputs.lines);
@@ -135,6 +152,33 @@ function Content({cart: originalCart}: {cart: OptimisticCart | null}) {
   const cartHasItems = (cart?.totalQuantity || 0) > 0;
   const currentLines = cart?.lines ? flattenConnection(cart?.lines) : [];
 
+  const bundleFetcher = useFetcher();
+  const [recommendedBundle, setRecommendedBundle] = useState(null);
+
+  useEffect(() => {
+    if (cartHasItems && bundleFetcher.state === 'idle' && !recommendedBundle) {
+      // Extract product IDs and titles from current cart items
+      const productsInCart = currentLines.map(line => ({
+        id: line.merchandise.product.id,
+        title: line.merchandise.product.title,
+        description: line.merchandise.product.description, // Assuming description is available
+      }));
+
+      if (productsInCart.length > 0) {
+        bundleFetcher.submit(
+          { products: JSON.stringify(productsInCart), theme: 'complementary' }, // Adjust theme as needed
+          { method: 'post', action: '/api/bundle' }
+        );
+      }
+    }
+  }, [cartHasItems, bundleFetcher.state, recommendedBundle, currentLines]);
+
+  useEffect(() => {
+    if (bundleFetcher.data?.bundle) {
+      setRecommendedBundle(bundleFetcher.data.bundle);
+    }
+  }, [bundleFetcher.data]);
+
   return (
     <>
       {!!linesCount && (
@@ -153,6 +197,12 @@ function Content({cart: originalCart}: {cart: OptimisticCart | null}) {
                 checkoutUrl={cart.checkoutUrl}
                 isSkeleton={!cartHasItems}
               />
+              {recommendedBundle && (
+                <div className="bundle-recommendation-section mt-8">
+                  <h3>Complete Your Order with a Recommended Bundle!</h3>
+                  <ProductBundle bundle={recommendedBundle} />
+                </div>
+              )}
             </div>
           </div>
         </div>
